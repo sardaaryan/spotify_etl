@@ -1,0 +1,16 @@
+# Environments
+.env
+venv/
+env/
+__pycache__/
+
+# Data & Databases (NEVER commit these)
+data/
+*.db
+*.duckdb
+*.parquet
+*.json
+
+# Airflow Logs
+logs/
+airflow-webserver.pid

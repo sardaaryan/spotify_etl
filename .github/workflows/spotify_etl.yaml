@@ -1,0 +1,54 @@
+name: Spotify Daily ETL
+
+on:
+  schedule:
+    - cron: '17 4 * * *' # Runs daily at 4:17 AM UTC (off-peak hours)
+  workflow_dispatch: # Allows you to trigger the run manually from the UI
+
+permissions:
+  contents: write # Required for the bot to push stats.json back to your repo
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip' # Speeds up runs by caching your pip dependencies
+
+      - name: Cache DuckDB Database (State Management)
+        uses: actions/cache@v3
+        with:
+          path: data/spotify_warehouse.db
+          # The key updates every run so we always save the latest version of the DB
+          key: duckdb-state-${{ github.run_id }}
+          restore-keys: |
+            duckdb-state-
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Extraction & Load (Pipeline)
+        env:
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          SPOTIFY_CLIENT_SECRET: ${{ secrets.SPOTIFY_CLIENT_SECRET }}
+          SPOTIFY_REDIRECT_URI: ${{ secrets.SPOTIFY_REDIRECT_URI }}
+          SPOTIFY_REFRESH_TOKEN: ${{ secrets.SPOTIFY_REFRESH_TOKEN }}
+        run: python src/pipeline.py
+
+      - name: Generate Analytics Payload (Publish)
+        run: python src/publish.py
+
+      - name: Commit and Push stats.json Only
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Automated ETL Run: Update stats.json"
+          file_pattern: 'data/stats.json' # Prevents repo bloat by ignoring the .db file
