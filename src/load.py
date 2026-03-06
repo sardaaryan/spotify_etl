@@ -64,16 +64,20 @@ def load_dimensions(dim_df: pd.DataFrame):
         print(f"Dimension table updated. Total unique tracks stored: {count}")
 
 def get_uncached_track_ids(track_ids: list) -> list:
-    """Checks the database to see which track_ids we don't have metadata for yet."""
     if not track_ids:
         return []
         
     with duckdb.connect(DB_PATH) as con:
-        try:
-            # Get all track_ids currently in our dimension table
-            existing_ids = con.execute("SELECT track_id FROM dim_tracks").df()['track_id'].tolist()
-        except duckdb.CatalogException:
-            existing_ids = []
-            
-    # Return the IDs that are in the new batch, but NOT in our database
-    return list(set(track_ids) - set(existing_ids))
+        # Create a temporary table of the new IDs to compare inside SQL
+        temp_df = pd.DataFrame({'track_id': track_ids})
+        
+        # Use a LEFT JOIN to find which IDs are NOT in our dim_tracks table
+        # This is MUCH faster for large datasets
+        uncached = con.execute("""
+            SELECT t.track_id 
+            FROM temp_df t
+            LEFT JOIN dim_tracks d ON t.track_id = d.track_id
+            WHERE d.track_id IS NULL
+        """).df()['track_id'].tolist()
+        
+    return list(set(uncached))

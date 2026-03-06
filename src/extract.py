@@ -179,30 +179,27 @@ def fetch_track_metadata(access_token: str, track_id: str):
 if __name__ == "__main__":
     print("Starting Spotify Extraction Engine...")
     
-    # Create the data folder if it doesn't exist
     os.makedirs("data", exist_ok=True)
 
     token = get_access_token()
 
     # Fetch recent tracks
     data = fetch_recently_played(token)
+    
+    items = data.get("items", [])
+    
+    # --- NEW ENHANCED LOGGING ---
+    if items:
+        # Spotify returns items in reverse-chronological order (newest first)
+        newest_track = items[0]['played_at']
+        oldest_track = items[-1]['played_at']
+        
+        print(f"Success! Extracted {len(items)} tracks.")
+        print(f"Data Window: {oldest_track} ———> {newest_track}")
+    else:
+        print("No new tracks found in this window.")
+    # -----------------------------
 
-    # Dump the raw output to a local file for inspection
+    # Save the raw data for debugging
     with open("data/raw_response.json", "w") as f:
         json.dump(data, f, indent=4)
-        
-    items = data.get("items", [])
-    print(f"\nSuccessfully fetched {len(items)} tracks!")
-    
-    if items:
-        print("\n--- Testing Dimensional Data Extraction ---")
-        first_track = items[0]['track']
-        track_id = first_track['id']
-        
-        print(f"Fetching deep metadata for: {first_track['name']} (ID: {track_id})")
-        
-        # Test our new function!
-        metadata = fetch_track_metadata(token, track_id)
-        
-        print("\nMetadata Successfully Extracted (Preview for dim_tracks):")
-        print(json.dumps(metadata, indent=4))

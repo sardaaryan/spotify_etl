@@ -2,7 +2,8 @@ name: Spotify Daily ETL
 
 on:
   schedule:
-    - cron: '17 4 * * *' 
+    # This runs at 8:34 AM and 8:34 PM UTC
+    - cron: '34 8,20 * * *'
   workflow_dispatch: 
 
 permissions:
