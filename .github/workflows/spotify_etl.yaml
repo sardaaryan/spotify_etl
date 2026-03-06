@@ -2,11 +2,11 @@ name: Spotify Daily ETL
 
 on:
   schedule:
-    - cron: '17 4 * * *' # Runs daily at 4:17 AM UTC (off-peak hours)
-  workflow_dispatch: # Allows you to trigger the run manually from the UI
+    - cron: '17 4 * * *' 
+  workflow_dispatch: 
 
 permissions:
-  contents: write # Required for the bot to push stats.json back to your repo
+  contents: write 
 
 jobs:
   run-pipeline:
@@ -20,13 +20,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip' # Speeds up runs by caching your pip dependencies
+          cache: 'pip'
 
       - name: Cache DuckDB Database (State Management)
         uses: actions/cache@v3
         with:
           path: data/spotify_warehouse.db
-          # The key updates every run so we always save the latest version of the DB
           key: duckdb-state-${{ github.run_id }}
           restore-keys: |
             duckdb-state-
@@ -47,8 +46,16 @@ jobs:
       - name: Generate Analytics Payload (Publish)
         run: python src/publish.py
 
-      - name: Commit and Push stats.json Only
-        uses: stefanzweifel/git-auto-commit-action@v5
+      # --- THIS IS THE NEW REPLACED STEP ---
+      - name: Pushing stats.json to Portfolio Repo
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.PORTFOLIO_REPO_TOKEN }}
         with:
-          commit_message: "Automated ETL Run: Update stats.json"
-          file_pattern: 'data/stats.json' # Prevents repo bloat by ignoring the .db file
+          source_file: 'data/stats.json'
+          destination_repo: 'sardaaryan/portfolio' # 👈 Replace with your actual username/repo
+          destination_folder: 'data'
+          user_email: 'github-actions@github.com'
+          user_name: 'spotify-etl-bot'
+          commit_message: 'Update Spotify stats from ETL pipeline'
+          destination_branch: 'main'
