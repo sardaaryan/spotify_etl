@@ -35,11 +35,15 @@ def generate_stats():
         minutes = total_minutes % 60
         listening_time = f"{hours}h {minutes}m"
 
-        # 3. TOP GENRES (Using UNNEST to explode the array column)
+        # 3. TOP GENRES (Using a CTE to unnest safely before aggregating)
         top_genres_df = con.sql("""
-            SELECT unnest(d.artist_genres) as genre, COUNT(f.played_at) as plays
-            FROM fact_listening_history f
-            JOIN dim_tracks d ON f.track_id = d.track_id
+            WITH unnested_data AS (
+                SELECT unnest(d.artist_genres) as genre, f.played_at
+                FROM fact_listening_history f
+                JOIN dim_tracks d ON f.track_id = d.track_id
+            )
+            SELECT genre, COUNT(played_at) as plays
+            FROM unnested_data
             GROUP BY 1
             ORDER BY 2 DESC
             LIMIT 5
