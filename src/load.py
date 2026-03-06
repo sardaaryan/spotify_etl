@@ -1,10 +1,14 @@
+import os
 import duckdb
 import pandas as pd
 
 DB_PATH = "data/spotify_warehouse.db"
 
 def init_db():
-    """Creates a normalized Star Schema: Fact vs Dimension."""
+    """Initializes the Star Schema tables if they don't exist."""
+    #Create the data directory if it doesn't exist
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
     with duckdb.connect(DB_PATH) as con:
         # FACT TABLE: Just the event and the ID
         con.execute("""

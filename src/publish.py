@@ -55,6 +55,7 @@ def generate_stats():
         }
 
         # 5. EXPORT TO STATIC FILE
+        os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True) # 👈 THIS IS THE FIX
         with open(OUTPUT_PATH, "w") as f:
             json.dump(stats, f, indent=4)
         
