@@ -11,10 +11,10 @@ The goal of this project was to move beyond simple scripts and build a fully aut
 | Component | Technology | Role |
 | :--- | :--- | :--- |
 | **Language** | Python 3.11 | Core logic and data manipulation. |
-| **Orchestration** | GitHub Actions | Serverless CI/CD, event-driven execution, and cron scheduling. |
+| **Orchestration** | GitHub Actions | Serverless CI/CD and bi-daily cron scheduling. |
 | **Database** | DuckDB | OLAP-optimized, in-process database for analytical queries. |
-| **Storage** | GitHub Actions Cache | State management for persisting the `.db` file across runs. |
-| **Deployment** | GitHub PAT (Cross-Repo) | Decoupled architecture pushing data to a separate frontend repo. |
+| **Storage** | GitHub Actions Cache | State management for persisting the `.db` warehouse. |
+| **Deployment** | GitHub PAT (Cross-Repo) | Decoupled architecture pushing data to a Next.js portfolio. |
 
 ## 🏗 Data Architecture
 This project implements a **Star Schema** to optimize query performance and ensure data integrity:
@@ -24,29 +24,38 @@ This project implements a **Star Schema** to optimize query performance and ensu
 
 
 
-### 💡 Engineering Highlights
-* **Self-Healing Infrastructure:** Implemented logic to dynamically generate directory structures on ephemeral cloud runners to prevent IO errors.
-* **Robust SQL Modeling:** Utilized Common Table Expressions (CTEs) and DuckDB's `UNNEST` function to flatten nested JSON API responses into relational models.
-* **Decoupled Architecture:** Built a cross-repo push mechanism using GitHub Personal Access Tokens (PAT). This allows the data pipeline to stay separate from the UI code, triggering a Vercel redeploy only when data updates.
-* **State Management:** Leveraged GitHub Actions Cache to persist the DuckDB warehouse, allowing for cumulative data growth over time without an external managed database.
+## 🧠 Engineering Challenges & Solutions
+
+### Challenge 1: Overcoming the 50-Track API Limit
+**Problem:** Spotify's `recently-played` endpoint is capped at 50 tracks. Daily polling resulted in "data gaps" during high-activity periods where more than 50 songs were played in 24 hours.
+**Solution:** I increased polling frequency to a 12-hour interval (`cron: '34 8,20 * * *'`). To handle the resulting data overlap, I implemented an **idempotent loading strategy** using the `played_at` timestamp as a Primary Key, ensuring the database remains a "Single Source of Truth" without duplicates.
+
+### Challenge 2: API Rate Limiting & Latency
+**Problem:** Repeatedly fetching artist/genre metadata for the same tracks was inefficient, increased execution time, and risked API rate limits.
+**Solution:** Developed a two-tier caching system.
+1. **In-memory:** An `ARTIST_CACHE` handles duplicates within a single run.
+2. **Database-level:** A "Pre-fetch Filter" compares incoming data against the `dim_tracks` table so the pipeline only hits the API for metadata if it doesn't already exist in the warehouse.
+
+## 💡 Engineering Highlights
+* **High-Frequency Ingestion:** effectively doubled data throughput by optimizing polling windows.
+* **Efficient SQL Modeling:** Utilized DuckDB's `UNNEST` and CTEs to flatten nested JSON arrays into clean relational tables.
+* **Decoupled CI/CD:** Built a cross-repo push mechanism using GitHub PATs to keep the data pipeline independent from the UI code.
 
 ## ⚙️ How It Works
-1.  **Trigger:** GitHub Actions wakes up daily via a `cron` schedule.
-2.  **Extract:** Python fetches the Spotify `recently-played` endpoint using an OAuth2 refresh flow.
+1.  **Trigger:** GitHub Actions wakes up twice daily at off-peak hours to avoid runner congestion.
+2.  **Extract:** Python fetches the Spotify `recently-played` endpoint using an automated OAuth2 refresh flow.
 3.  **Transform:** Raw data is cleaned and deduplicated using Pandas and DuckDB.
-4.  **Load:** Data is modeled into the Star Schema within the `spotify_warehouse.db`.
+4.  **Load:** Incremental data is loaded into the `spotify_warehouse.db` stored in the Action Cache.
 5.  **Publish:** SQL analytics are exported to a lightweight `stats.json`.
-6.  **Deploy:** The payload is pushed to the Next.js portfolio repo, updating the live site.
-
-
+6.  **Deploy:** The payload is pushed to the Next.js repo, triggering a fresh build on the live portfolio.
 
 ## 📂 Project Structure
 ```text
 ├── .github/workflows/  # CI/CD & Orchestration
 ├── src/
-│   ├── extract.py      # Spotify API interaction
-│   ├── load.py         # Star Schema & DB initialization
-│   ├── publish.py      # SQL analytics & JSON generation
-│   └── pipeline.py     # Main execution orchestrator
+│   ├── extract.py      # API Interaction & In-memory Caching
+│   ├── load.py         # Star Schema & Incremental Loading
+│   ├── publish.py      # SQL Analytics (DuckDB)
+│   └── pipeline.py     # Execution Orchestrator
 ├── data/               # Persistent analytics (stats.json)
 └── requirements.txt    # Dependency management
