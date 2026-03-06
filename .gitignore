@@ -4,12 +4,17 @@ venv/
 env/
 __pycache__/
 
-# Data & Databases (NEVER commit these)
-data/
+# Data & Databases
 *.db
 *.duckdb
 *.parquet
-*.json
+
+# Ignore the data folder content by default...
+data/*
+
+# ...BUT allow the folder itself and the stats.json file
+!data/.gitkeep
+!data/stats.json
 
 # Airflow Logs
 logs/
