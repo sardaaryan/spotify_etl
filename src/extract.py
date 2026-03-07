@@ -99,19 +99,16 @@ def fetch_recently_played(access_token: str, after_timestamp: int = None):
     """Fetch the last 50 played tracks, handling API rate limits natively."""
     url = "https://api.spotify.com/v1/me/player/recently-played"
     headers = {"Authorization": f"Bearer {access_token}"}
-
-    # Max out the limit to 50
     params = {"limit": 50}
 
-    # If we pass a timestamp, add the 'after' parameter to strictly pull new data
     if after_timestamp:
         params["after"] = after_timestamp
 
-    response = requests.get(url, headers=headers, params=params,timeout=10)
+    response = requests.get(url, headers=headers, params=params, timeout=10)
     response.raise_for_status() 
     return response.json()
 
-# Create an empty dictionary at the top level to store artist genres in memory
+# Cache dictionary
 ARTIST_CACHE = {}
 
 @retry(
@@ -121,11 +118,11 @@ ARTIST_CACHE = {}
 )
 def fetch_artist_details(access_token: str, artist_id: str):
     """Fetches genres for a specific artist, utilizing an in-memory cache."""
-    # 1. THE CACHE CHECK: If we already looked up this artist, return it instantly!
     if artist_id in ARTIST_CACHE:
         print(f"   [Cache Hit] Using stored genres for artist {artist_id}")
         return ARTIST_CACHE[artist_id]
 
+    # REAL SPOTIFY URL
     url = f"https://api.spotify.com/v1/artists/{artist_id}" 
     headers = {"Authorization": f"Bearer {access_token}"}
     
@@ -135,7 +132,6 @@ def fetch_artist_details(access_token: str, artist_id: str):
     data = response.json()
     genres = data.get('genres', [])
     
-    # 2. SAVE TO CACHE: Remember these genres for the next time this artist appears
     ARTIST_CACHE[artist_id] = genres
     return genres
 
@@ -146,6 +142,7 @@ def fetch_artist_details(access_token: str, artist_id: str):
 )
 def fetch_track_metadata(access_token: str, track_id: str):
     """Fetches detailed metadata for a single track and merges artist genres."""
+    # REAL SPOTIFY URL
     url = f"https://api.spotify.com/v1/tracks/{track_id}" 
     headers = {"Authorization": f"Bearer {access_token}"}
     
@@ -154,15 +151,17 @@ def fetch_track_metadata(access_token: str, track_id: str):
     if response.status_code == 404:
         return None
         
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as e:
+        if response.status_code == 429:
+            retry_time = response.headers.get("Retry-After", "Not provided")
+            print(f"\n[RATE LIMITED] Spotify is telling us to wait for: {retry_time} seconds\n")
+        raise e  # Still raise the error so tenacity can do its thing
     data = response.json()
     
-    # FIX 1: Get the popularity score directly from the TRACK response
     track_popularity = data.get('popularity', 0)
-    
     artist_id = data['artists'][0]['id']
-    
-    # FIX 2: This will now use our smart caching function
     genres = fetch_artist_details(access_token, artist_id)
     
     return {
@@ -172,34 +171,14 @@ def fetch_track_metadata(access_token: str, track_id: str):
         "artist_id": artist_id,
         "album_name": data['album']['name'],
         "artist_genres": genres,
-        "popularity": track_popularity  # Now correctly mapped to the track!
+        "popularity": track_popularity
     }
-
 
 if __name__ == "__main__":
     print("Starting Spotify Extraction Engine...")
-    
     os.makedirs("data", exist_ok=True)
-
     token = get_access_token()
-
-    # Fetch recent tracks
     data = fetch_recently_played(token)
     
-    items = data.get("items", [])
-    
-    # --- NEW ENHANCED LOGGING ---
-    if items:
-        # Spotify returns items in reverse-chronological order (newest first)
-        newest_track = items[0]['played_at']
-        oldest_track = items[-1]['played_at']
-        
-        print(f"Success! Extracted {len(items)} tracks.")
-        print(f"Data Window: {oldest_track} ———> {newest_track}")
-    else:
-        print("No new tracks found in this window.")
-    # -----------------------------
-
-    # Save the raw data for debugging
     with open("data/raw_response.json", "w") as f:
         json.dump(data, f, indent=4)

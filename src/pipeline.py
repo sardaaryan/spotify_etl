@@ -1,5 +1,6 @@
 import os
 import sys
+import time  # <-- Added the time module
 import pandas as pd
 from extract import get_access_token, fetch_recently_played, fetch_track_metadata
 from validate import parse_spotify_json, validate_data
@@ -64,11 +65,15 @@ if __name__ == "__main__":
     # STEP 6: Fetch Metadata for Uncached Tracks
     if uncached_ids:
         print(f"\nFound {len(uncached_ids)} uncached tracks. Fetching deep metadata...")
+        print(uncached_ids)
         dimension_records = []
         for tid in uncached_ids:
             meta = fetch_track_metadata(token, tid)
             if meta:
                 dimension_records.append(meta)
+            
+            # <-- ADDED DELAY: 1.5 seconds of breathing room to prevent 429 errors
+            time.sleep(1.5)
                 
         # STEP 7 & 8: Build Dimension DataFrame & Load
         if dimension_records:

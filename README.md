@@ -30,11 +30,17 @@ This project implements a **Star Schema** to optimize query performance and ensu
 **Problem:** Spotify's `recently-played` endpoint is capped at 50 tracks. Daily polling resulted in "data gaps" during high-activity periods where more than 50 songs were played in 24 hours.
 **Solution:** I increased polling frequency to a 12-hour interval (`cron: '34 8,20 * * *'`). To handle the resulting data overlap, I implemented an **idempotent loading strategy** using the `played_at` timestamp as a Primary Key, ensuring the database remains a "Single Source of Truth" without duplicates.
 
-### Challenge 2: API Rate Limiting & Latency
-**Problem:** Repeatedly fetching artist/genre metadata for the same tracks was inefficient, increased execution time, and risked API rate limits.
-**Solution:** Developed a two-tier caching system.
+### Challenge 2: API Rate Limiting & Resource Management
+**Problem:** Spotify’s Web API employs dynamic rate limiting. On high-activity days, repeatedly fetching artist/genre metadata for every track was inefficient and risked triggering 429 "Too Many Requests" errors.
+
+**Solution:** Developed a two-tier caching system to minimize external calls:
 1. **In-memory:** An `ARTIST_CACHE` handles duplicates within a single run.
-2. **Database-level:** A "Pre-fetch Filter" compares incoming data against the `dim_tracks` table so the pipeline only hits the API for metadata if it doesn't already exist in the warehouse.
+2. **Database-level:** A "Pre-fetch Filter" compares incoming data against the `dim_tracks` table.
+*Note: While `Get Several Tracks` is currently utilized for batch efficiency, it is noted as deprecated in the Spotify Web API reference; the architecture is designed for a modular transition to single-track lookups if the endpoint is retired.*
+
+### Challenge 4: Future-Proofing against API Deprecations
+**Problem:** Recent shifts in the Spotify Developer Roadmap have made specific endpoints, such as `Audio Features`, unstable or "not safe to depend on" for applications in Development Mode.
+**Solution:** Built the schema to be **Metadata-Resilient**. I prioritized stable Dimension data (Genres, Popularity, Artist Metadata) over high-risk endpoints, ensuring the analytics engine remains functional regardless of specific attribute deprecations.
 
 ## 💡 Engineering Highlights
 * **High-Frequency Ingestion:** effectively doubled data throughput by optimizing polling windows.
@@ -56,6 +62,7 @@ This project implements a **Star Schema** to optimize query performance and ensu
 │   ├── extract.py      # API Interaction & In-memory Caching
 │   ├── load.py         # Star Schema & Incremental Loading
 │   ├── publish.py      # SQL Analytics (DuckDB)
-│   └── pipeline.py     # Execution Orchestrator
+│   ├── pipeline.py     # Execution Orchestrator
+|   └── validate.py     # Data Checks
 ├── data/               # Persistent analytics (stats.json)
 └── requirements.txt    # Dependency management
