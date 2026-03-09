@@ -17,19 +17,27 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 1. Generate Weekly Rotation Variables
+      - name: Set Date Variables
+        run: |
+          echo "CURRENT_YEAR=$(date +'%G')" >> $GITHUB_ENV
+          echo "CURRENT_WEEK=$(date +'%V')" >> $GITHUB_ENV
+
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Cache DuckDB Database (State Management)
+      # 2. Use Weekly Rotating Cache Key
+      # v2 prefix ignores your old 7-column database schema
+      - name: Cache DuckDB Database (Weekly Rotation)
         uses: actions/cache@v3
         with:
           path: data/spotify_warehouse.db
-          key: duckdb-state-${{ github.run_id }}
+          key: duckdb-v2-${{ env.CURRENT_YEAR }}-${{ env.CURRENT_WEEK }}-${{ github.run_id }}
           restore-keys: |
-            duckdb-state-
+            duckdb-v2-${{ env.CURRENT_YEAR }}-${{ env.CURRENT_WEEK }}-
 
       - name: Install Dependencies
         run: |
@@ -47,16 +55,15 @@ jobs:
       - name: Generate Analytics Payload (Publish)
         run: python src/publish.py
 
-      # --- THIS IS THE NEW REPLACED STEP ---
       - name: Pushing stats.json to Portfolio Repo
         uses: dmnemec/copy_file_to_another_repo_action@main
         env:
           API_TOKEN_GITHUB: ${{ secrets.PORTFOLIO_REPO_TOKEN }}
         with:
           source_file: 'data/stats.json'
-          destination_repo: 'sardaaryan/portfolio' # 👈 Replace with your actual username/repo
+          destination_repo: 'sardaaryan/portfolio'
           destination_folder: 'data'
           user_email: 'github-actions@github.com'
           user_name: 'spotify-etl-bot'
-          commit_message: 'Update Spotify stats from ETL pipeline'
+          commit_message: 'Update Spotify stats from ETL pipeline [Weekly Reset]'
           destination_branch: 'main'
