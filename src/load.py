@@ -27,7 +27,6 @@ def init_db():
                 artist_name VARCHAR,
                 artist_id VARCHAR,
                 album_name VARCHAR,
-                artist_genres VARCHAR[], 
                 popularity INTEGER
             )
         """)

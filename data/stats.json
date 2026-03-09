@@ -1,27 +1,80 @@
 {
-    "last_updated": "2026-03-06T14:09:24.602370",
-    "total_listening_time": "2h 54m",
-    "top_artists": [
+    "last_updated": "2026-03-08T17:10:29.449156",
+    "total_listening_time": "2h 57m",
+    "top_artists_weekly": [
         {
-            "artist_name": "Ditch Days",
-            "plays": 14
+            "artist_name": "Jhen\u00e9 Aiko",
+            "plays": 2
         },
         {
-            "artist_name": "Porcupine Tree",
-            "plays": 5
+            "artist_name": "NF",
+            "plays": 2
         },
         {
-            "artist_name": "Lil Uzi Vert",
+            "artist_name": "The Weeknd",
+            "plays": 2
+        },
+        {
+            "artist_name": "Joomanji",
             "plays": 1
         },
         {
-            "artist_name": "LUCKI",
-            "plays": 1
-        },
-        {
-            "artist_name": "kuru",
+            "artist_name": "Yeek",
             "plays": 1
         }
     ],
-    "top_genres": []
+    "top_tracks_weekly": [
+        {
+            "track_name": "PTSD",
+            "artist_name": "G Herbo",
+            "plays": 1
+        },
+        {
+            "track_name": "I Got 5 On It",
+            "artist_name": "Luniz",
+            "plays": 1
+        },
+        {
+            "track_name": "A Devil's Touch in the Midwest",
+            "artist_name": "Macabre Plaza",
+            "plays": 1
+        },
+        {
+            "track_name": "DANCE NOW",
+            "artist_name": "Joey Valence & Brae",
+            "plays": 1
+        },
+        {
+            "track_name": "You Are Here",
+            "artist_name": "Jhen\u00e9 Aiko",
+            "plays": 1
+        }
+    ],
+    "top_albums_weekly": [
+        {
+            "album_name": "Trip",
+            "artist_name": "Jhen\u00e9 Aiko",
+            "plays": 2
+        },
+        {
+            "album_name": "Nothing but Love",
+            "artist_name": "Just Friends",
+            "plays": 1
+        },
+        {
+            "album_name": "An Old Smile",
+            "artist_name": "Macabre Plaza",
+            "plays": 1
+        },
+        {
+            "album_name": "Industry Plant",
+            "artist_name": "iann dior",
+            "plays": 1
+        },
+        {
+            "album_name": "LOST",
+            "artist_name": "NF",
+            "plays": 1
+        }
+    ]
 }

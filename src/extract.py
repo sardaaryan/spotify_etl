@@ -116,32 +116,8 @@ ARTIST_CACHE = {}
     stop=stop_after_attempt(5),
     retry=retry_if_exception_type(requests.exceptions.RequestException)
 )
-def fetch_artist_details(access_token: str, artist_id: str):
-    """Fetches genres for a specific artist, utilizing an in-memory cache."""
-    if artist_id in ARTIST_CACHE:
-        print(f"   [Cache Hit] Using stored genres for artist {artist_id}")
-        return ARTIST_CACHE[artist_id]
-
-    # REAL SPOTIFY URL
-    url = f"https://api.spotify.com/v1/artists/{artist_id}" 
-    headers = {"Authorization": f"Bearer {access_token}"}
-    
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-    
-    data = response.json()
-    genres = data.get('genres', [])
-    
-    ARTIST_CACHE[artist_id] = genres
-    return genres
-
-@retry(
-    wait=wait_exponential(multiplier=1, min=2, max=10), 
-    stop=stop_after_attempt(5),
-    retry=retry_if_exception_type(requests.exceptions.RequestException)
-)
 def fetch_track_metadata(access_token: str, track_id: str):
-    """Fetches detailed metadata for a single track and merges artist genres."""
+    """Fetches detailed metadata for a single track."""
     # REAL SPOTIFY URL
     url = f"https://api.spotify.com/v1/tracks/{track_id}" 
     headers = {"Authorization": f"Bearer {access_token}"}
@@ -162,7 +138,6 @@ def fetch_track_metadata(access_token: str, track_id: str):
     
     track_popularity = data.get('popularity', 0)
     artist_id = data['artists'][0]['id']
-    genres = fetch_artist_details(access_token, artist_id)
     
     return {
         "track_id": track_id,
@@ -170,7 +145,6 @@ def fetch_track_metadata(access_token: str, track_id: str):
         "artist_name": data['artists'][0]['name'],
         "artist_id": artist_id,
         "album_name": data['album']['name'],
-        "artist_genres": genres,
         "popularity": track_popularity
     }
 
